@@ -6887,7 +6887,7 @@
             "comment": "http related"
           },
           "16": { "name": "v16", "comment": "return" },
-          "17": { "name": "v17", "params": "uint32_t" },
+          "17": { "name": "init", "params": "uint32_t gamemode", "comment": "spawns new thread, new thread measures edge pings, sets up player/lobby structs and initiates masterserver contact (requesting room) then terminates" },
           "18": { "name": "v18", "comment": "<SteamInternal_ContextInit>" },
           "19": { "name": "v19", "comment": "more socket stuff" },
           "20": { "name": "v20", "comment": "return" },
@@ -6932,12 +6932,14 @@
       {
         "field": "sockaddr_unknown2",
         "type": "SockAddrIn",
-        "comment": "to edge server"
+        "comment": "to master server"
       },
-      { "field": "unknown27", "type": "UnsignedDword" },
-      { "field": "unknown28", "type": "UnsignedDword" },
-      { "field": "unknown29", "type": "UnsignedDword" },
-      { "field": "unknown30", "type": "UnsignedDword" },
+      {
+        "field": "last_sent",
+        "type": "UnsignedQword",
+        "comment": "most likely, for timeout purposes"
+      },
+      { "field": "last_reply", "type": "UnsignedQword" },
       { "field": "unknown31", "type": "UnsignedDword" },
       { "field": "unknown32", "type": "UnsignedDword" },
       { "field": "unknown33", "type": "UnsignedDword" },
@@ -6952,55 +6954,58 @@
       { "field": "online_player_4", "type": "OnlinePlayer" },
       { "field": "local_player", "type": "OnlinePlayer" },
       { "field": "lobby", "type": "OnlineLobby" },
-      { "field": "lobby_dupe", "type": "OnlineLobby" },
+      { "field": "lobby_dupe", "type": "OnlineLobby", "comment": "one of them is probably the server version" },
       {
         "field": "servers",
         "type": "Array",
         "length": 32,
         "arraytype": "OnlineServer"
       },
-      { "field": "unknown40", "type": "UnsignedDword" },
+      { "field": "edge_relay", "type": "UnsignedDword" },
       { "field": "unknown41", "type": "UnsignedDword" },
-      { "field": "unknown42", "type": "DataPointer" },
+      { "field": "last_reply_edge", "type": "UnsignedQword", "comment": "???" },
       { "field": "unknown43a", "type": "UnsignedByte" },
       { "field": "unknown43b", "type": "UnsignedByte" },
       { "field": "unknown43c", "type": "UnsignedByte" },
       { "field": "unknown43d", "type": "UnsignedByte" },
-      { "field": "unknown44", "type": "UnsignedDword" },
-      { "field": "unknown45", "type": "UnsignedDword" },
-      { "field": "unknown46", "type": "UnsignedDword" },
+      { "field": "server_frame", "type": "UnsignedDword", "comment": "sent and received by relay" },
+      { "field": "relay_idkey", "type": "UnsignedQword", "comment": "sent to the edge relay to id us"},
       { "field": "sockaddr_game", "type": "SockAddrIn" },
       {
-        "field": "unknown47",
+        "field": "local_inputs",
         "type": "StdVector",
-        "valuetype": "UnsignedQword"
+        "valuetype": "UnsignedWord"
       },
       {
-        "field": "unknown48",
+        "field": "online_inputs_1",
         "type": "StdVector",
-        "valuetype": "UnsignedQword"
+        "valuetype": "UnsignedWord"
       },
       {
-        "field": "unknown49",
+        "field": "online_inputs_2",
         "type": "StdVector",
-        "valuetype": "UnsignedQword"
+        "valuetype": "UnsignedWord"
       },
-      { "field": "unknown50", "type": "UnsignedQword" },
-      { "field": "unknown51", "type": "UnsignedQword" },
-      { "field": "unknown52", "type": "UnsignedQword" },
-      { "field": "unknown53", "type": "UnsignedQword" },
-      { "field": "unknown54", "type": "UnsignedQword" },
-      { "field": "unknown55", "type": "UnsignedQword" },
+      {
+        "field": "online_inputs_3",
+        "type": "StdVector",
+        "valuetype": "UnsignedWord"
+      },
+      {
+        "field": "online_inputs_4",
+        "type": "StdVector",
+        "valuetype": "UnsignedWord"
+      },
       { "field": "unknown56", "type": "UnsignedQword" },
       { "field": "unknown57", "type": "UnsignedQword" },
-      { "field": "unknown58", "type": "UnsignedQword" },
+      { "field": "client_id", "type": "UnsignedQword" },
       { "field": "unknown59", "type": "UnsignedQword" },
       { "field": "unknown60", "type": "UnsignedQword" },
       { "field": "unknown61", "type": "UnsignedQword" },
       { "field": "unknown62", "type": "UnsignedQword" },
       { "field": "unknown63", "type": "UnsignedQword" },
       { "field": "unknown64", "type": "UnsignedQword" },
-      { "field": "unknown65", "type": "UnsignedQword" },
+      { "field": "last_sent_edge", "type": "UnsignedQword", "comment": "???" },
       { "field": "unknown66", "type": "UnsignedQword" },
       { "field": "unknown67", "type": "UnsignedQword" },
       { "field": "unknown68", "type": "UnsignedQword" },
@@ -7068,8 +7073,8 @@
     ],
     "OnlineServer": [
       { "field": "sockaddr", "type": "SockAddrIn" },
-      { "field": "unknown_query", "type": "Qword" },
-      { "field": "unknown_response", "type": "Qword" }
+      { "field": "ping_stamp", "type": "Qword" },
+      { "field": "ping_reply", "type": "Qword" }
     ],
     "SockAddrIn": [
       { "field": "family", "type": "Word" },
@@ -7078,13 +7083,10 @@
     ],
     "OnlinePlayer": [
       { "field": "player_name_length", "type": "UnsignedByte" },
-      { "field": "padding1", "type": "UnsignedByte" },
-      { "field": "padding2", "type": "UnsignedByte" },
-      { "field": "padding3", "type": "UnsignedByte" },
-      { "field": "unknown1", "type": "UnsignedDword" },
+      { "field": "padding", "type": "Array", "length": 7, "arraytype": "UnsignedByte", "comment": "literally never set, probably just for alignment" },
       { "field": "id", "type": "UnsignedQword", "comment": "like steam id" },
-      { "field": "unknown4", "type": "UnsignedDword" },
-      { "field": "unknown5", "type": "UnsignedByte" },
+      { "field": "gamemode", "type": "UnsignedDword", "comment": "1 coop, 2 deathmatch" },
+      { "field": "input_delay", "type": "UnsignedByte" },
       {
         "field": "ready_state",
         "type": "Flags8",
@@ -7108,35 +7110,24 @@
       }
     ],
     "OnlineLobby": [
-      { "field": "code", "type": "UnsignedDword" },
-      { "field": "unknown1", "type": "UnsignedDword" },
+      { "field": "code", "type": "UnsignedQword", "comment": "all 8 bytes set to 0xFF to signal room request" },
       { "field": "keys_pressed", "type": "UnsignedDword" },
       { "field": "keys_pressed_sync", "type": "UnsignedDword" },
       { "field": "local_player_slot", "type": "UnsignedByte" },
-      { "field": "unknown3", "type": "UnsignedByte" },
-      { "field": "unknown4", "type": "Byte" },
-      { "field": "unknown5", "type": "Byte" },
-      { "field": "unknown6", "type": "Dword" },
-      { "field": "unknown7", "type": "Byte" },
-      { "field": "unknown8", "type": "Byte" },
-      { "field": "unknown9", "type": "UnsignedByte" },
-      { "field": "unknown10", "type": "UnsignedByte" },
-      { "field": "unknown11", "type": "Dword" },
-      { "field": "unknown12", "type": "Dword" },
-      { "field": "unknown13", "type": "Byte" },
-      { "field": "unknown14", "type": "Byte" },
-      { "field": "unknown15", "type": "UnsignedByte" },
-      { "field": "unknown16", "type": "UnsignedByte" },
-      { "field": "unknown17", "type": "UnsignedDword" },
-      { "field": "unknown18", "type": "UnsignedByte" },
-      { "field": "unknown19", "type": "UnsignedByte" },
-      { "field": "unknown20", "type": "Byte" },
-      { "field": "unknown21", "type": "Byte" },
-      { "field": "unknown22", "type": "Byte" },
-      { "field": "unknown23", "type": "UnsignedByte" },
-      { "field": "unknown24", "type": "UnsignedByte" },
-      { "field": "unknown25", "type": "UnsignedByte" },
-      { "field": "unknown26", "type": "UnsignedDword" }
+      {
+        "field": "edge_pings",
+        "type": "Array",
+        "length": 32,
+        "arraytype": "UnsignedByte",
+        "comment": "divided by 4, sent to the lobby server to decide on edge relay"
+      },
+      {
+        "field": "unknown23",
+        "type": "Array",
+        "length": 7,
+        "arraytype": "UnsignedByte",
+        "comment": "also sent across the wire, likely just padding to align the player arrays in the packets which starts at 0x48, always set to 0"
+      }
     ],
     "CollisionInfo": [
       { "field": "rect", "type": "Rect" },
